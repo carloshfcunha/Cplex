@@ -1,0 +1,506 @@
+// Variáveis de Entrada
+int n = 4; // número de bateladas i
+int PD = 4; // número de produtos pd
+int OR = 2;
+int OE = 6;
+int R = 3; // número de ratores r
+int P = 3; // número de pulmões p
+int E = 3; // número de envasadoras e
+int M = 10000; // número muito grande pra facilitar minha vida
+
+// Matiz com a demanda de cada produto
+float D[1..PD] = [100,100,100,100];
+
+// Matrizes com o tempo inicial de funcionamento de cada equipamento
+float TIR[1..R] = [0,0,0];
+float TIP[1..P] = [0,0,0];
+float TIE[1..E] = [0,0,0];
+
+// Matriz com o tempo final de funcionamento de cada equipamento
+float TFR[1..R] = [600,600,600];
+float TFP[1..P] = [600,600,600];
+float TFE[1..E] = [600,600,600];
+
+// Matriz com a massa de i produzida em cada r
+float MR[1..R] = [500, 2000, 3000];
+
+// Matriz com o tempo de processamento de i em cada r
+float PRM[1..PD][1..R] = [[40, 70, 90],
+[50, 80, 100],
+[60, 90, 110],
+[60, 90, 110]];
+
+// Matriz com o tempo de processamento de i em cada p
+float PPM[1..PD][1..P] = [[0.0025, 0.0025, 0.0025],
+[0.0025, 0.0025, 0.0025],
+[0.0025, 0.0025, 0.0025],
+[0.0025, 0.0025, 0.0025]];
+
+// Matriz com o tempo de processamento de i em cada e
+float PEM[1..PD][1..E] = [[0.004, 0.007, 0.009],
+[0.0050, 0.0080, 0.00100],
+[0.0060, 0.0090, 0.00110],
+[0.0060, 0.0090, 0.00110]];
+
+// Matriz com o tempo de processamento de i em cada r
+float TLR[1..PD][1..R] = [[40, 70, 90],
+[50, 80, 100],
+[60, 90, 110],
+[60, 90, 110]];
+
+// Matriz com o tempo de processamento de i em cada p
+float TLP[1..PD][1..P] = [[30, 30, 30],
+[30, 30, 30],
+[30, 30, 30],
+[30, 30, 30]];
+
+// Matriz com o tempo de processamento de i em cada e
+float TLE[1..PD][1..E] = [[60, 60, 60],
+[60, 60, 60],
+[60, 60, 60],
+[60, 60, 60]];
+
+// Compatibilidade produto-reator
+float XIR[1..PD][1..R] = [[1, 1, 1],
+[1, 1, 1],
+[1, 1, 1],
+[1, 1, 1]];
+
+// Compatibilidade produto-pulmão
+float XIP[1..PD][1..P] = [[1, 1, 1],
+[1, 1, 1],
+[1, 1, 1],
+[1, 1, 1]];
+
+// Compatibilidade produto-envasadora
+float XIE[1..PD][1..E] = [[1, 1, 1],
+[1, 1, 1],
+[1, 1, 1],
+[1, 1, 1]];
+
+// Compatibilidade reator-pulmão
+float XRP[1..R][1..P] = [[1, 1, 1],
+[1, 1, 1],
+[1, 1, 1]];
+
+// Compatibilidade pulmão-envasadora
+float XPE[1..P][1..E] = [[1, 1, 1],
+[1, 1, 1],
+[1, 1, 1]];
+
+// Compatibilidade reator-envasadora
+float XRE[1..R][1..E] = [[1, 1, 1],
+[1, 1, 1],
+[1, 1, 1]];
+
+// Tempo de início das tarefas
+dvar int TR[1..n];
+dvar int TP[1..n];
+dvar int TE[1..n];
+
+// Processamento das tarefas
+dvar int PR[1..n];
+dvar int PP[1..n];
+dvar int PE[1..n];
+
+// Tempo final de funcionamento
+dvar int END;
+
+// 1 se a tarefa i é realizada no equipamento e 0 se não
+dvar int XB[1..n];
+dvar int MB[1..PD][1..n];
+
+// 1 se a tarefa i é realizada no equipamento e 0 se não
+dvar int XR[1..n];
+dvar int XP[1..n];
+dvar int XE[1..n];
+
+// 1 se a tarefa é realizada pelo operador de manipulação Or e 0 se não
+dvar int XOR[1..n];
+
+// 1 se a tarefa é realizada pelo operador de envase Or e 0 se não
+dvar int XOE[1..n];
+
+// 1 se a tarefa é realizada pelo operador de envase Or e 0 se não
+dvar boolean XTP[1..n][1..n];
+
+// 1 se a tarefa é realizada pelo operador de envase Or e 0 se não
+dvar boolean XTE[1..n][1..n];
+
+
+// Minimização do tempo total de processamento (função objetivo)
+minimize END + 0.0001*sum(i in 1..n)(TE[i] + PE[i]);
+
+
+// Restrições
+subject to{
+
+forall (i in 1..n){
+TE[i] + PE[i] <= END; 
+}
+
+forall (i in 1..n){
+XB[i] >= 0;
+XB[i] <= PD; 
+}
+
+
+forall (i in 2..n){
+XB[i] <= M*XB[i-1]; 
+}
+
+forall (i in 1..n){
+XR[i] <= M*XB[i];
+XB[i] <= M*XR[i]; 
+}
+
+forall (i in 1..n){
+XP[i] <= M*XB[i];
+}
+
+forall (i in 1..n){
+XE[i] <= M*XB[i];
+XB[i] <= M*XE[i]; 
+}
+
+forall (i in 1..n, pd in 1..PD, r in 1..R){
+  MB[pd][i] <= MR[r] + M*abs(XR[i]-r) + M*abs(XB[i]-r);
+  MB[pd][i] <= M*XR[i];
+  MB[pd][i] <= M*XB[i];
+}
+
+
+// A demanda D deve ser atendida
+forall (pd in 1..PD){
+  sum(i in 1..n)(MB[pd][i]) >= D[pd];
+}
+
+// Processamento da tarefa i em cada equipamento
+forall (pd in 1..PD, i in 1..n, r in 1..R){
+  PR[i] >= PRM[pd][r] - M*abs(XR[i]-r) - M*abs(XB[i]-pd);
+}
+
+forall (i in 1..n, p in 1..P){
+  PP[i] >= sum(pd in 1..PD)(PPM[pd][p]*MB[pd][i]) - M*abs(XP[i]-p);
+}
+
+forall (i in 1..n, e in 1..E){
+  PE[i] >= sum(pd in 1..PD)(PEM[pd][e]*MB[pd][i]) - M*abs(XE[i]-e);
+}
+
+// O processamento deve ser não negativo
+forall (i in 1..n){
+  PR[i] >= 0;
+}
+forall (i in 1..n){
+  PP[i] >= 0;
+}
+forall (i in 1..n){
+  PE[i] >= 0;
+}
+
+forall (i in 2..n){
+TR[i] >= TR[i-1];
+}
+
+// XTP é igual a 1 se o tempo inicial da tarefa i for maior que o tempo inicial da tarefa a, no mesmo reator, e 0 se não.
+forall (i in 1..n, a in 1..n){
+TP[i] >= TP[a] - M*(1-XTP[i][a]);
+}
+forall (i in 1..n, a in 1..n : a != i){
+XTP[i][a] + XTP[a][i] == 1;
+}
+forall (i in 1..n){
+XTP[i][i] == 0;
+}
+
+// XTE é igual a 1 se o tempo inicial da tarefa i for maior que o tempo inicial da tarefa a, no mesmo reator, e 0 se não.
+forall (i in 1..n, a in 1..n){
+TE[i] >= TE[a] - M*(1-XTE[i][a]);
+}
+forall (i in 1..n, a in 1..n : a != i){
+XTE[i][a] + XTE[a][i] == 1;
+}
+forall (i in 1..n){
+XTE[i][i] == 0;
+}
+
+
+// Cada equipamento só pode realizar uma tarefa por vez:
+forall (i in 2..n, a in 1..(i-1)){
+TR[i] >= TP[a] + PP[a] - M*abs(XR[i]-XR[a]);
+}
+forall (i in 2..n, a in 1..(i-1)){
+TR[i] >= TE[a] + PE[a] - M*abs(XR[i]-XR[a]) - M*XP[a];
+}
+forall (pd in 1..PD, i in 1..n, a in 1..n, p in 1..P){
+TP[i] >= TE[a] + PE[a] - M*(1-XTP[i][a]) - M*abs(XP[i]-XP[a]);
+}
+forall (pd in 1..PD, i in 1..n, a in 1..n, e in 1..E){
+TE[i] >= TE[a] + PE[a] - M*(1-XTE[i][a]) - M*abs(XE[i]-XE[a]);
+}
+
+// O tempo inicial da tarefa i em um equipamento deve ser maior que o tempo inicial da tarefa i somado com seu processamento no equipamento anterior:
+forall (i in 1..n){
+TP[i] >= TR[i] + PR[i];
+}
+forall (i in 1..n){
+TE[i] >= TP[i] + PP[i];
+}
+
+
+
+
+}
+// Imprimindo Resultados
+execute{
+
+writeln("Término");
+writeln(END);
+
+
+var b = 0;
+
+for(var i=1; i<=n; i++){
+	var a = 0;
+	for(var pd=1; pd<=PD; pd++){
+		if(XB[pd][i]>0){
+		a = a + 1;
+		}
+	}					
+	if(a>0){
+		b = b + 1;
+	}		
+}
+
+writeln("Bateladas");
+writeln(b);
+
+writeln("Reatores");
+writeln(R);
+
+writeln("Pulmões");
+writeln(P);
+
+writeln("Envasadoras");
+writeln(E);
+
+writeln("Batelada");
+for(var i=1; i<=n; i++){
+	for(var pd=1; pd<=PD; pd++){
+		if (XB[pd][i]>0){
+		writeln(i);
+		}		
+	}		
+}
+
+writeln("Reator");
+for(var i=1; i<=n; i++){
+	for(var r=1; r<=R; r++){
+		if (XR[i][r]>0){
+		writeln(r);
+		}		
+	}		
+}
+
+writeln("Operador de manipulação");
+for(var i=1; i<=n; i++){
+	for(var Or=1; Or<=OR; Or++){
+		if (XOR[i][Or]>0){
+		writeln(Or);
+		}		
+	}		
+}
+
+writeln("Início");
+for(var i=1; i<=n; i++){
+	var a = 0;
+	for(var pd=1; pd<=PD; pd++){
+		if(XB[pd][i]>0){
+		a = a + 1;
+		}
+	}					
+	if(a>0){
+		writeln(TR[i]);
+	}		
+}
+
+writeln("Duração");
+for(var i=1; i<=n; i++){
+	var a = 0;
+	for(var pd=1; pd<=PD; pd++){
+		if(XB[pd][i]>0){
+		a = a + 1;
+		}
+	}					
+	if(a>0){
+		writeln(PR[i]);
+	}		
+}
+
+writeln("Conclusão");
+for(var i=1; i<=n; i++){
+	var a = 0;
+	for(var pd=1; pd<=PD; pd++){
+		if(XB[pd][i]>0){
+		a = a + 1;
+		}
+	}					
+	if(a>0){
+		writeln(TR[i] + PR[i]);
+	}		
+}
+
+writeln("Pulmão");
+for(var i=1; i<=n; i++){
+	var a = 0;
+	var b = 0;
+	for(var p=1; p<=P; p++){
+		if(XP[i][p]>0){
+		writeln(p);
+		a = a + 1;
+		}		
+	}		
+	for(var pd=1; pd<=PD; pd++){
+		if(XB[pd][i]>0){
+		b = b + 1;
+		}		
+	}
+	if(a<1){
+		if(b>0){
+		writeln(0);	
+		}	
+	}
+}
+
+writeln("Início");
+for(var i=1; i<=n; i++){
+	var a = 0;
+	var b = 0;
+	for(var p=1; p<=P; p++){
+		if(XP[i][p]>0){
+		writeln(TP[i]);
+		a = a + 1;
+		}		
+	}		
+	for(var pd=1; pd<=PD; pd++){
+		if(XB[pd][i]>0){
+		b = b + 1;
+		}		
+	}
+	if(a<1){
+		if(b>0){
+		writeln(0);	
+		}	
+	}
+}
+
+writeln("Duração");
+for(var i=1; i<=n; i++){
+	var a = 0;
+	for(var pd=1; pd<=PD; pd++){
+		if(XB[pd][i]>0){
+		a = a + 1;
+		}
+	}					
+	if(a>0){
+		writeln(PP[i]);
+	}		
+}
+
+writeln("Conclusão");
+for(var i=1; i<=n; i++){
+	var a = 0;
+	var b = 0;
+	for(var p=1; p<=P; p++){
+		if(XP[i][p]>0){
+		writeln(TP[i] + PP[i]);
+		a = a + 1;
+		}		
+	}		
+	for(var pd=1; pd<=PD; pd++){
+		if(XB[pd][i]>0){
+		b = b + 1;
+		}		
+	}
+	if(a<1){
+		if(b>0){
+		writeln(0);	
+		}	
+	}
+}
+
+writeln("Envasadora");
+for(var i=1; i<=n; i++){
+	for(var e=1; e<=E; e++){
+		if (XE[i][e]>0){
+		writeln(e);
+		}		
+	}		
+}
+
+writeln("Operadores de envase");
+for(var i=1; i<=n; i++){
+	var a = 0;
+	for(var Oe=1; Oe<=OE; Oe++){	
+		if (XOE[i][Oe]>0){
+			if(a>0){	
+			write(", ");
+			}
+		write(Oe);
+		a = a + 1;
+		}		
+	}		
+	var b = 0;
+	for(var pd=1; pd<=PD; pd++){
+		if(XB[pd][i]>0){
+		b = b + 1;
+		}
+	}					
+	if(b>0){
+		writeln();
+	}
+}
+
+
+
+writeln("Início");
+for(var i=1; i<=n; i++){
+	var a = 0;
+	for(var pd=1; pd<=PD; pd++){
+		if(XB[pd][i]>0){
+		a = a + 1;
+		}
+	}					
+	if(a>0){
+		writeln(TE[i]);
+	}		
+}
+
+writeln("Duração");
+for(var i=1; i<=n; i++){
+	var a = 0;
+	for(var pd=1; pd<=PD; pd++){
+		if(XB[pd][i]>0){
+		a = a + 1;
+		}
+	}					
+	if(a>0){
+		writeln(PE[i]);
+	}		
+}
+
+writeln("Conclusão");
+for(var i=1; i<=n; i++){
+	var a = 0;
+	for(var pd=1; pd<=PD; pd++){
+		if(XB[pd][i]>0){
+		a = a + 1;
+		}
+	}					
+	if(a>0){
+		writeln(TE[i] + PE[i]);
+	}		
+}
+
+}
